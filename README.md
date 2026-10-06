@@ -40,7 +40,7 @@ physics-simulator/
 ├── Simulation.cpp
 │
 └── CMakeLists.txt
-
+```
 This modular design makes the simulator easier to understand, test, maintain, and extend.
 Future Development
 Future versions of the project are expected to include:
@@ -68,3 +68,4 @@ Simulation Instructions
 C++ Physics Engine
        ↓
 Interactive Visualization
+```
