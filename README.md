@@ -53,19 +53,3 @@ Future versions of the project are expected to include:
 - Integration with artificial intelligence
 The long-term objective is to allow an AI assistant to translate a physical problem written in natural language into structured simulation instructions. These instructions could then be interpreted by the C++ simulation engine to generate an interactive visualization of the requested phenomenon.
 The AI component will remain separated from the physics engine, allowing the simulator to operate independently and making the physical results easier to validate.
-
-Esta versión mantiene la idea original del proyecto: primero construir un simulador independiente que interprete instrucciones y represente fenómenos de cinemática, dejando la integración con IA como una etapa posterior. :chatgpt-content-reference{index="0"}
-
-Además, para GitHub me parece mejor esta redacción porque deja claro que **C++ es el motor del proyecto**, pero que la meta no es simplemente crear animaciones: la arquitectura está pensada para que posteriormente exista el flujo:
-
-```text
-Natural Language
-       ↓
-AI Assistant
-       ↓
-Simulation Instructions
-       ↓
-C++ Physics Engine
-       ↓
-Interactive Visualization
-```
