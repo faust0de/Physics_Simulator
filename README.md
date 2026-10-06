@@ -1,4 +1,3 @@
-# Physics_Simulator
 # Interactive Physics Simulator for AI-Assisted STEM Learning
 
 This project aims to develop an interactive and programmable physics simulator designed to support STEM learning through dynamic visualization of physical phenomena.
