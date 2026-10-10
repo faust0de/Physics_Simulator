@@ -30,6 +30,7 @@ Vector2D Vector2D:: operator/(const double& other)const{
 // Returns a unit vector in the same direction, or a zero vector if the magnitude is zero.
 Vector2D Vector2D::normalized()const{
     double mag= magnitude();
+    // Avoids division by zero when normalizing a zero vector.
     if(mag==0){
         return Vector2D(0.0,0.0);
     }

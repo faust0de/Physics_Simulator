@@ -1,6 +1,7 @@
 #pragma once
 #include "PhysicalObject.hpp"
 
+// Defines the abstract interface for numerical integration strategies.
 class Integrator{
 public:
     // Allows derived integrators to be destroyed through a base class pointer.

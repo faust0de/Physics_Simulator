@@ -9,6 +9,7 @@ void EulerIntegrator::integrate(PhysicalObject& object,double deltatime)const{
     Vector2D position= object.getPosition();
     Vector2D velocity= object.getVelocity();
     Vector2D acceleration= object.getAcceleration();
+    // Converts the accumulated force to acceleration using Newton's second law.
     Vector2D ForceAcceleration=object.getAccumulatedForce()/object.getMass();
     Vector2D TotalAcceleration= acceleration+ForceAcceleration;
 

@@ -6,6 +6,7 @@ PhysicalObject::PhysicalObject(double massValue, const Vector2D& initialPosition
 
 // Adds a force to the accumulated force.
 void PhysicalObject::applyForce(const Vector2D& force) {
+    // Combines forces until the numerical integrator clears the step total.
     accumulatedForce += force;
 }
 
