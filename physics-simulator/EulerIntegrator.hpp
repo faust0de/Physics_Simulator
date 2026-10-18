@@ -1,10 +1,10 @@
 #pragma once
-
 #include "Integrator.hpp"
 
-// Implements the explicit Euler numerical integration strategy.
-class EulerIntegrator:public Integrator{
+// Explicit Euler advances position using the old velocity, never the new velocity.
+class EulerIntegrator : public Integrator {
 public:
-    // Updates position and velocity using explicit Euler integration and clears accumulated forces.
-    void integrate(PhysicalObject& object, double deltatime)const override;
+    void integrate(PhysicalObject& object,double dt) const override;
+    void integrate(PhysicalObject& object,double dt,const AccelerationEvaluator& acceleration) const override;
+    MotionState integrate(const MotionState& initial,double dt,const AccelerationEvaluator& acceleration) const override;
 };

@@ -3,6 +3,8 @@
 #include <raylib.h>
 #include "PhysicalObject.hpp"
 #include "Scale.hpp"
+#include "TargetDetector.hpp"
+#include "Kinematics.hpp"
 // Handles graphical representation and playback controls using raylib.
 class Renderer{
 private:
@@ -23,6 +25,9 @@ private:
     bool timelineDragging;
     // Stores the height reserved for playback controls in pixels.
     int controlPanelHeight;
+
+    // Shares label occupancy across a group of generic measurement scales.
+    void drawScale(const Scale& scale,std::vector<Rectangle>& occupiedLabels) const;
 
     // Calculates a horizontal label position from the vector direction and chosen side.
     Vector2 getVectorLabelPosition(
@@ -50,6 +55,17 @@ public:
     void beginFrame()const;
     // Presents the completed rendering frame.
     void endFrame()const;
+
+    // Draws consecutive stored numerical positions without reconstructing physics.
+    void drawTrajectory(const std::vector<Vector2D>& points) const;
+    // Draws a generic target at its physical radius with a visible center mark.
+    void drawTarget(const TrajectoryTarget& target,bool hit) const;
+    // Displays target observation independently of playback pause state.
+    void drawTargetStatus(const TrajectoryTarget& target,const TargetHitResult& hit,double minimumDistance,bool finished) const;
+
+    // Draws a geometric angle using a fixed pixel radius without scenario knowledge.
+    void drawAngleGuide(const AngleGuide& guide) const;
+    void drawCircularGuide(const CircularGuide& guide) const;
 
     // Draws the world coordinate axes in screen space.
     void drawAxes()const;
@@ -81,8 +97,8 @@ public:
     // Returns the top screen coordinate of the control panel.
     int getControlPanelTop() const;
 
-    // Adjusts the world-to-screen scale to fit the vertical extent of the physical scales.
-    void fitToScales(const std::vector<Scale>& scales);
+    // Fits physical scales and a reference position inside a uniformly scaled 2D viewport.
+    void fitToScales(const std::vector<Scale>& scales,const Vector2D& fallbackPosition,const TrajectoryTarget& target = TrajectoryTarget(),const std::vector<Vector2D>& previewPoints = {});
 
     // Draws the acceleration vector and its physical magnitude using a capped visual length.
     void drawAccelerationVector(const PhysicalObject& object,const Vector2D& acceleration,double simulationDuration) const;

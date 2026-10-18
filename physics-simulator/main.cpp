@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -11,14 +12,17 @@
 #include "CommandEditor.hpp"
 #include "CommandParser.hpp"
 
-#include "PhenomenonFactory.hpp"
 #include "IntegratorFactory.hpp"
 
 #include "PhysicalObject.hpp"
-#include "PhysicalPhenomenon.hpp"
+#include "Kinematics.hpp"
+#include <optional>
 #include "Integrator.hpp"
 #include "Simulation.hpp"
 #include "Scale.hpp"
+
+
+
 
 // Draws text using automatic word wrapping inside a rectangle.
 void drawWrappedText(
@@ -127,8 +131,7 @@ int main() {
     PhysicalObject ball;
 
     // Stores the physical phenomenon selected by the command.
-    std::unique_ptr<PhysicalPhenomenon>
-        phenomenon;
+    std::optional<Kinematics> kinematics;
 
     // Stores the numerical integrator selected by the command.
     std::unique_ptr<Integrator>
@@ -139,11 +142,16 @@ int main() {
 
     // Stores the physical scales required by the current phenomenon.
     std::vector<Scale> scales;
+    // Stores measurement decomposition and the optional geometric angle guide.
+    KinematicsVisuals visuals;
 
     // Stores the expected physical duration of the simulation.
     double simulationDuration = 0.0;
 
     // Indicates whether a valid simulation has been created.
+    TrajectoryTarget target;
+    ProjectileMetrics projectileMetrics;
+    bool showProjectileMetrics = false;
     bool simulationLoaded = false;
 
     // Controls whether the command editor or simulation is displayed.
@@ -223,13 +231,13 @@ int main() {
         if (
             simulationLoaded &&
             !showEditor &&
-            phenomenon &&
+            kinematics &&
             integrator
         ) {
 
             simulation.step(
                 ball,
-                *phenomenon,
+                *kinematics,
                 *integrator,
                 frameDeltaTime
             );
@@ -268,33 +276,19 @@ int main() {
 
                 if (result.success) {
 
-                    // Creates the phenomenon requested by the command.
-                    std::unique_ptr<PhysicalPhenomenon>
-                        newPhenomenon =
-                            PhenomenonFactory::create(
-                                result.config.phenomenon
-                            );
-
                     // Creates the integrator requested by the command.
                     std::unique_ptr<Integrator>
                         newIntegrator =
                             IntegratorFactory::create(
-                                result.config.integrator
+                                result.config.integratorType
                             );
 
-                    // Verifies that the requested phenomenon can be created.
-                    if (!newPhenomenon) {
-
-                        commandValid = false;
-
-                        statusMessage =
-                            "Unable to create phenomenon: " +
-                            result.config.phenomenon +
-                            ".";
-                    }
-
+                    PhysicalObject newBall(result.config.mass,result.config.initialPosition,result.config.initialVelocity);
+                    Simulation newSimulation;
+                    std::string sequenceError;
+                    // Preflight completes before any live state is replaced.
                     // Verifies that the requested integrator can be created.
-                    else if (!newIntegrator) {
+                    if (!newIntegrator) {
 
                         commandValid = false;
 
@@ -304,13 +298,13 @@ int main() {
                             ".";
                     }
 
+                    else if (!newSimulation.configureSequence(newBall,result.config,*newIntegrator,sequenceError)) {
+                        commandValid = false;
+                        statusMessage = sequenceError;
+                    }
                     else {
 
-                        // Replaces the current phenomenon.
-                        phenomenon =
-                            std::move(
-                                newPhenomenon
-                            );
+                        kinematics = newSimulation.getCurrentKinematics();
 
                         // Replaces the current numerical integrator.
                         integrator =
@@ -318,43 +312,39 @@ int main() {
                                 newIntegrator
                             );
 
-                        // Creates the physical object from the parsed configuration.
-                        ball =
-                            PhysicalObject(
-                                result.config.mass,
-                                result.config.initialPosition,
-                                result.config.initialVelocity
-                            );
-
-                        // Creates a fresh simulation state.
-                        simulation =
-                            Simulation();
-
-                        // Configures physical time relative to playback time.
-                        simulation.configureTimeScale(
-                            ball,
-                            *phenomenon,
-                            result.config.playbackDuration
-                        );
+                        // Install the prepared initial state after successful validation.
+                        ball = newBall;
+                        simulation = std::move(newSimulation);
+                        target = simulation.getCurrentTarget();
+                        projectileMetrics = simulation.getCurrentProjectileMetrics();
+                        showProjectileMetrics = kinematics->isProjectile();
 
                         // Loads the simulation without starting it automatically.
                         simulation.pause();
 
-                        // Retrieves the physical scales required by the phenomenon.
-                        scales =
-                            phenomenon->getScales(
-                                ball
-                            );
+                        // Retrieves physical reference scales and the optional angle guide.
+                        visuals = simulation.getCurrentVisuals();
+                        scales = visuals.scales;
 
                         // Adjusts the renderer to the physical dimensions.
+                        auto previewBounds = simulation.getTargetPreviewBounds();
+                        const auto& sequenceBounds = simulation.getSequenceBounds();
+                        previewBounds.insert(previewBounds.end(),sequenceBounds.begin(),sequenceBounds.end());
+                        if (kinematics->isCircular()) {
+                            auto bounds = kinematics->getPreviewBounds(ball,0.0);
+                            previewBounds.insert(previewBounds.end(),bounds.begin(),bounds.end());
+                        }
                         renderer.fitToScales(
-                            scales
+                            scales,
+                            ball.getPosition(),
+                            target,
+                            previewBounds
                         );
 
                         // Calculates the expected physical duration.
                         simulationDuration =
                             simulation.getDuration(
-                                *phenomenon
+                                *kinematics
                             );
 
                         // Marks the new simulation as available.
@@ -446,11 +436,21 @@ int main() {
 
         else if (
             simulationLoaded &&
-            phenomenon &&
+            kinematics &&
             integrator
         ) {
 
+            // Only the active regime supplies guides; the complete numerical trail remains.
+            kinematics = simulation.getCurrentKinematics();
+            visuals = simulation.getCurrentVisuals();
+            scales = visuals.scales;
+            projectileMetrics = simulation.getCurrentProjectileMetrics();
+            showProjectileMetrics = kinematics->isProjectile();
             // Draws the physical measurement scales.
+            renderer.drawCircularGuide(visuals.circularGuide);
+            renderer.drawAngleGuide(visuals.angleGuide);
+            renderer.drawTrajectory(simulation.getTrajectoryHistory());
+            renderer.drawTarget(simulation.getCurrentTarget(),simulation.getActiveTargetHit().hit);
             renderer.drawScales(
                 scales
             );
@@ -469,7 +469,7 @@ int main() {
             // Draws the acceleration provided by the current phenomenon.
             renderer.drawAccelerationVector(
                 ball,
-                phenomenon->getAcceleration(
+                kinematics->getAcceleration(
                     ball
                 ),
                 simulationDuration
@@ -480,6 +480,52 @@ int main() {
                 ball,
                 simulation.getCurrentTime()
             );
+
+            target = simulation.getCurrentTarget();
+            const TargetHitResult& displayedTargetHit = simulation.getActiveTargetHit();
+            renderer.drawTargetStatus(target,displayedTargetHit,
+                simulation.getMinimumTargetDistance(),simulation.isFinished(ball,*kinematics));
+            if (simulation.usesMotionSequence()) {
+                DrawText(TextFormat("Phase %i / %i: %s",static_cast<int>(simulation.getCurrentPhaseIndex()+1),
+                    static_cast<int>(simulation.getPhaseCount()),kinematics->getConfiguration().phenomenon.c_str()),20,104,16,DARKGRAY);
+                DrawText(TextFormat("Phase time: %.3f s / distance: %.3f m",simulation.getPhaseElapsedTime(),simulation.getPhaseTraveledDistance()),20,124,16,DARKGRAY);
+                DrawText(TextFormat("Total distance: %.3f m / phase angle: %.2f deg",simulation.getTraveledDistance(),simulation.getPhaseTraveledAngle()*180.0/std::acos(-1.0)),20,144,16,DARKGRAY);
+                const char* untilName = "Natural";
+                switch (simulation.getCurrentUntil().Type) {
+                    case TerminationType::Time: untilName = "Time"; break;
+                    case TerminationType::Distance: untilName = "Distance"; break;
+                    case TerminationType::Speed: untilName = "Speed"; break;
+                    case TerminationType::Angle: untilName = "Angle"; break;
+                    case TerminationType::Target: untilName = "Target"; break;
+                    case TerminationType::Natural: break;
+                }
+                const char* targetStatus = !simulation.hasActiveTarget() ? "None" :
+                    (simulation.getActiveTargetHit().hit ? "HIT" : (simulation.isSequenceComplete() ? "MISS" : "Pending"));
+                DrawText(TextFormat("Until: %s / Target: %s / %s",untilName,targetStatus,
+                    IntegratorFactory::label(simulation.getCurrentIntegratorType())),20,164,16,DARKGRAY);
+                if (simulation.isSequenceComplete() && !simulation.hasReachedAngularStop())
+                    DrawText(simulation.isTargetMiss() ? "Sequence: MISS (target condition not reached)" : "Sequence complete",20,186,16,simulation.isTargetMiss() ? MAROON : DARKGREEN);
+            }
+            if (!simulation.usesMotionSequence())
+                DrawText(TextFormat("Integrator: %s",IntegratorFactory::label(simulation.getCurrentIntegratorType())),20,110,16,DARKGRAY);
+            if (kinematics->isCircular()) {
+                CircularMetrics metrics = kinematics->getCircularMetrics(ball);
+                DrawText(TextFormat("Radius: %.3f / current: %.3f m",metrics.configuredRadius,metrics.currentRadius),600,16,16,DARKGRAY);
+                DrawText(TextFormat("Radial error: %+.6f m",metrics.radialError),600,34,16,DARKGRAY);
+                DrawText(TextFormat("Angle: %.2f / traveled: %.2f deg",metrics.angleDegrees,simulation.getTraveledAngle()*180.0/std::acos(-1.0)),600,52,16,DARKGRAY);
+                DrawText(TextFormat("Omega: %.4f rad/s / alpha: %.4f rad/s^2",metrics.angularVelocity,metrics.angularAcceleration),600,70,16,DARKGRAY);
+                DrawText(TextFormat("Tangential speed: %.4f m/s",metrics.tangentialSpeed),600,88,16,DARKGRAY);
+                DrawText(TextFormat(simulation.usesMotionSequence() ? "aC: %.4f / aT: %.4f m/s^2" : "a centripetal: %.4f / tangential: %.4f m/s^2",metrics.centripetalAcceleration,metrics.tangentialAcceleration),simulation.usesMotionSequence() ? 600 : 20,simulation.usesMotionSequence() ? 172 : 148,16,DARKGRAY);
+                if (simulation.hasReachedAngularStop())
+                    DrawText("Angular stop: radial Euler velocity preserved",20,simulation.usesMotionSequence() ? 186 : 170,16,MAROON);
+            }
+            if (showProjectileMetrics) {
+                DrawText(TextFormat("Initial height: %.3f m",projectileMetrics.initialHeightAboveGround),600,16,16,DARKGRAY);
+                DrawText(TextFormat("Rise / maximum: %.3f / %.3f m",projectileMetrics.riseAboveLaunch,projectileMetrics.maximumHeightAboveGround),600,36,16,DARKGRAY);
+                DrawText(TextFormat("Apex: (%.2f, %.2f), t=%.3f s",projectileMetrics.apexPosition.x,projectileMetrics.apexPosition.y,projectileMetrics.apexTime),600,56,16,DARKGRAY);
+                DrawText(TextFormat("Impact: (%.2f, %.2f), t=%.3f s",projectileMetrics.impactPosition.x,projectileMetrics.impactPosition.y,projectileMetrics.impactTime),600,76,16,DARKGRAY);
+                DrawText(TextFormat("Horizontal range: %.3f m",projectileMetrics.horizontalRange),600,96,16,DARKGRAY);
+            }
 
             // Draws the simulation control area.
             renderer.drawControlPanel();
@@ -501,7 +547,7 @@ int main() {
 
                 simulation.seek(
                     ball,
-                    *phenomenon,
+                    *kinematics,
                     *integrator,
                     selectedTime
                 );

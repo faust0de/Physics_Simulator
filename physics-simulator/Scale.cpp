@@ -1,8 +1,8 @@
 #include "Scale.hpp"
 
 // Creates a world-space measurement scale with a range, intervals, and unit.
-Scale::Scale(const Vector2D& startPoint,const Vector2D& endPoint,double minimum,double maximum,int divisionCount,const std::string& unitValue)
-    : start(startPoint),end(endPoint),minValue(minimum),maxValue(maximum),divisions(divisionCount),unit(unitValue) {
+Scale::Scale(const Vector2D& startPoint,const Vector2D& endPoint,double minimum,double maximum,int divisionCount,const std::string& unitValue,const std::string& labelValue,ScaleRole roleValue)
+    : start(startPoint),end(endPoint),minValue(minimum),maxValue(maximum),divisions(divisionCount),unit(unitValue),label(labelValue),role(roleValue) {
 }
 
 // Returns the starting point in world coordinates.
@@ -34,3 +34,9 @@ int Scale::getDivisions() const {
 std::string Scale::getUnit() const {
     return unit;
 }
+
+// Returns the scale quantity label without copying it.
+const std::string& Scale::getLabel() const { return label; }
+
+// Returns visual placement metadata independent of scenario identity.
+ScaleRole Scale::getRole() const { return role; }

@@ -4,6 +4,9 @@
 #include "Vector2D.hpp"
 #include <vector>
 
+// Identifies a visual measurement role without naming a physical scenario.
+enum class ScaleRole { Generic, Horizontal, Vertical, Path };
+
 // Describes a physical measurement range in world coordinates.
 class Scale {
 private:
@@ -22,10 +25,14 @@ private:
 
     // Stores the unit displayed with the scale labels.
     std::string unit;
+    // Stores the quantity label drawn beside the scale.
+    std::string label;
+    // Guides generic tick and label placement.
+    ScaleRole role;
 
 public:
     // Creates a world-space measurement scale with a range, intervals, and unit.
-    Scale(const Vector2D& startPoint,const Vector2D& endPoint,double minimum,double maximum,int divisionCount,const std::string& unitValue);
+    Scale(const Vector2D& startPoint,const Vector2D& endPoint,double minimum,double maximum,int divisionCount,const std::string& unitValue,const std::string& labelValue = "",ScaleRole roleValue = ScaleRole::Generic);
 
     // Returns the starting point in world coordinates.
     Vector2D getStart() const;
@@ -42,4 +49,9 @@ public:
 
     // Returns the measurement unit used by the labels.
     std::string getUnit() const;
+
+    // Returns the displayed physical quantity label.
+    const std::string& getLabel() const;
+    // Returns the generic visual role of this scale.
+    ScaleRole getRole() const;
 };

@@ -1,26 +1,16 @@
 #include "EulerIntegrator.hpp"
 
-// Updates position and velocity using explicit Euler integration and clears accumulated forces.
-void EulerIntegrator::integrate(PhysicalObject& object,double deltatime)const{
-    if(object.getMass()<=0||deltatime<=0){
-        return;
-    }
-    //Gets actual values
-    Vector2D position= object.getPosition();
-    Vector2D velocity= object.getVelocity();
-    Vector2D acceleration= object.getAcceleration();
-    // Converts the accumulated force to acceleration using Newton's second law.
-    Vector2D ForceAcceleration=object.getAccumulatedForce()/object.getMass();
-    Vector2D TotalAcceleration= acceleration+ForceAcceleration;
-
-    //Explicit Euler Method
-    Vector2D NewPosition= velocity*deltatime + position;
-    Vector2D NewVelocity= velocity + TotalAcceleration*deltatime;
-    
-    //Update State
-    object.setPosition(NewPosition);
-    object.setVelocity(NewVelocity);
-
-    object.clearForces();
+MotionState EulerIntegrator::integrate(const MotionState& initial,double dt,const AccelerationEvaluator& acceleration) const {
+    if (dt <= 0.0) return initial;
+    Vector2D a = acceleration(initial);
+    return {initial.velocity*dt+initial.position,initial.velocity+a*dt};
 }
 
+void EulerIntegrator::integrate(PhysicalObject& object,double dt,const AccelerationEvaluator& acceleration) const {
+    apply(object,dt,acceleration);
+}
+
+void EulerIntegrator::integrate(PhysicalObject& object,double dt) const {
+    Vector2D acceleration = object.getAcceleration();
+    apply(object,dt,[&](const MotionState&) { return acceleration; });
+}

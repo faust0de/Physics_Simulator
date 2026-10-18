@@ -19,6 +19,8 @@ struct CommandParseResult {
 
 // Converts structured command text into a validated simulation configuration.
 class CommandParser {
+private:
+    CommandParseResult parseCommand(const std::string& command,bool deferTargetHorizon) const;
 public:
 
     // Parses and validates a simulation command written in JSON format.
